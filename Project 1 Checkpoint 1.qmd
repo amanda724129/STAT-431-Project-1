@@ -1,0 +1,34 @@
+---
+title: "Project 1 Checkpoint 1"
+format: html
+editor: visual
+author: "Amanda Iang"
+---
+
+**Context of the Data**
+
+The dataset we were assigned is the "plastics" dataset from TidyTuesday. The dataset contains the plastics audits from 2019 and 2020. Each observation includes the country, year, the parent company, counts of different types of plastic from that company (hdpe, ldpe, pet, pp, ps, and pvc), grand total, number of events, and number of volunteers. This dataset helps identify which companies are associated with plastic pollution the most.
+
+**What Cleaning Has Been Done to the Data?**
+
+The data has already been combined from audits conducted in 2019 and 2020. The column names have been cleaned and standardized into clear and understandable wording. There are also no obvious formatting issues in the dataset, so it is already fairly clean. However, the data is in a wide format and also includes a column called “empty,” which represents unknown plastic items and may be unnecessary depending on the analysis.
+
+**Research Questions That Could Be Addressed With These Data**
+
+1.  Which company associated with plastic pollution the most (has the highest grand total of plastic waste)?
+2.  What types of plastic are more common in some countries than others?
+
+**Research Questions That Could Be Addressed Using Supplemental Data**
+
+1.  Is plastic waste associated with the population of the country?
+2.  Does a country's recycling rate affect the level of plastic waste?
+
+**Visualization Sketches**
+
+1.   ![](images/2Untitled-2026-01-27-1731.png)
+
+<!-- -->
+
+2.  
+
+![](images/Untitled-2026-01-27-1731.png)
