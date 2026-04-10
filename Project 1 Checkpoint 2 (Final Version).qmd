@@ -1,8 +1,6 @@
 ---
 title: "Project 1 Checkpoint 2 (Final Version)"
-author: "Amanda Iang, Siddharth Venkiteswaran
-
-, Spencer Chinn"
+author: "Amanda Iang, Siddharth Venkiteswaran, Spencer Chinn"
 format: html
 editor: visual
 ---
