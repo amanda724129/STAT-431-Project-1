@@ -1,0 +1,122 @@
+---
+title: "Project 1 Checkpoint 2 (Final Version)"
+author: "Amanda Iang, Siddharth Venkiteswaran, Spencer Chinn"
+format: html
+editor: visual
+---
+
+## Project 1 Checkpoint 2
+
+```{r}
+library(tidyverse)
+plastics <- read.csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2021/2021-01-26/plastics.csv")
+```
+
+## Data Summaries Using Existing Columns
+
+### Data Summary 1
+
+**Question**: Which parent companies contribute the most total plastic waste across all countries, and what share of the total recorded waste does each company account for?
+
+```{r}
+overall_total <- sum(plastics$grand_total, na.rm = TRUE)
+
+company_share <- function(x, overall_total) {
+  sum(x, na.rm = TRUE) / overall_total
+}
+
+company_summary <- plastics |>
+  filter(!is.na(parent_company),
+         parent_company != "Grand Total",
+         parent_company != "null",
+         parent_company != "NULL",
+         parent_company != "Unbranded") |>
+  group_by(parent_company) |>
+  summarize(
+    total_plastic_waste = sum(grand_total, na.rm = TRUE),
+    share_of_total = company_share(grand_total, overall_total),
+    .groups = "drop"
+  ) |>
+  arrange(desc(total_plastic_waste)) |>
+  slice_head(n = 10)
+
+company_summary
+```
+
+### Data Summary 2
+
+**Question**: Which countries had clean up efforts that found the largest grand total of plastics in 2019 and 2020?
+
+```{r}
+total_plastics <- function(input_country) {
+  grand_total_plastics <- plastics |>
+    filter(country == input_country) |>
+    distinct(year, grand_total) |>
+    pull(grand_total)
+
+  sum(grand_total_plastics, na.rm = TRUE)
+}
+
+country_totals <- plastics |>
+  distinct(country) |>
+  mutate(plastic_total = map_int(country, total_plastics)) |>
+  slice_max(plastic_total, n = 10)
+
+country_totals
+```
+
+## Data Summaries That Modify Columns
+
+### Data Summary 3
+
+**Question**: Which countries have the highest average amount of plastic collected per cleanup event?
+
+```{r}
+plastic_per_event <- function(input_country) {
+  plastics |>
+    filter(country == input_country) |>
+    distinct(year, grand_total, num_events) |>
+    summarise(
+      total_plastic = sum(grand_total, na.rm = TRUE),
+      total_events = sum(num_events, na.rm = TRUE)
+    ) |>
+    mutate(plastic_per_event = total_plastic / total_events) |>
+    pull(plastic_per_event)
+}
+
+plastic_event_summary <- plastics |>
+  distinct(country) |>
+  mutate(plastic_per_event = map_dbl(country, plastic_per_event)) |>
+  slice_max(plastic_per_event, n = 10)
+
+plastic_event_summary
+```
+
+### Data Summary 4
+
+**Question**: Which nations had the highest average participation for cleanup events in 2019 and 2020?
+
+```{r}
+cleanup_totals <- function(input_country) {
+  plastics |>
+    filter(country == input_country) |>
+    distinct(num_events, volunteers) |>
+    mutate(
+      total_vol = sum(volunteers, na.rm = TRUE),
+      total_events = sum(num_events, na.rm = TRUE)
+    ) |>
+    distinct(total_vol, total_events) |>
+    mutate(vol_per_event = total_vol / total_events) |>
+    pull(vol_per_event)
+}
+
+volunteer_summary <- plastics |>
+  distinct(country) |>
+  mutate(
+    avg_participation = map_dbl(country, cleanup_totals),
+    rounded_participation = round(avg_participation)
+  ) |>
+  slice_max(avg_participation, n = 10)
+
+volunteer_summary
+```
