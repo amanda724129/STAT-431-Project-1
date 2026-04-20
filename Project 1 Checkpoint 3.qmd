@@ -220,7 +220,7 @@ Key variables include:
 
 -   year: year of observation (2019 or 2020)
 
--   value: GDP for that country and year
+-   value: GDP (nominal) in U.S. dollars
 
 ```{r}
 ## Rereading in the data from the local file
@@ -266,19 +266,35 @@ Key variables include:
 
 -   Year: year of observation
 
--   renewable energy indicator (e.g., percentage of total energy consumption from renewable sources)
+-   renewable energy consumption, measured as the percentage of total final energy consumption from renewable sources
 
 This dataset was merged with the GDP and plastics datasets to support comparative analysis across countries.
 
 **GDP Data Summary**
 
 ```{r}
-ggplot(plastics_top, aes(x = Value, y = grand_total)) +
+top10_codes <- plastics_top |>
+  distinct(country_code) |>
+  slice_head(n = 10) |>
+  pull(country_code)
+
+country_plot <- plastics_top |>
+  filter(country_code %in% top10_codes) |>
+  group_by(country, country_code) |>
+  summarize(
+    total_plastic = sum(grand_total, na.rm = TRUE),
+    gdp = mean(gdp_nominal, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+ggplot(country_plot, aes(x = gdp, y = total_plastic)) +
   geom_point(size = 3) +
   geom_smooth(method = "lm", se = FALSE) +
+  geom_text(aes(label = country_code), vjust = -0.5, size = 3) +
   labs(
-    title = "Relationship Between GDP and Plastic Production",
-    x = "GDP",
+    title = "Relationship Between GDP and Total Plastics (Top 10 Countries)",
+    x = "GDP (billions USD)",
     y = "Total Plastics"
-  )
+  ) +
+  theme_minimal()
 ```
