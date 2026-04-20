@@ -363,7 +363,7 @@ Attaching package: 'jsonlite'</code></pre>
 <span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>my_key <span class="ot">&lt;-</span> <span class="st">"eAqHuhzDSfLFeFP2pqhsbaC5iBQ6SvZ2VJeYSeNB"</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>my_key <span class="ot">&lt;-</span> <span class="st">"key"</span></span>
 <span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a><span class="do">## Create a function to pull the GDP of countries from the API</span></span>
 <span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>get_gdp <span class="ot">&lt;-</span> <span class="cf">function</span>(country_code, <span class="at">key =</span> my_key) {</span>
 <span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>  url <span class="ot">&lt;-</span> <span class="fu">glue</span>(<span class="st">"https://api.api-ninjas.com/v1/gdp?country={country_code};X-Api-Key={key}"</span>)</span>
@@ -417,6 +417,18 @@ Attaching package: 'jsonlite'</code></pre>
 <span id="cb26-10"><a href="#cb26-10" aria-hidden="true" tabindex="-1"></a><span class="do">## Saving the csv locally</span></span>
 <span id="cb26-11"><a href="#cb26-11" aria-hidden="true" tabindex="-1"></a><span class="fu">write.csv</span>(gdp_data, <span class="st">"gdp.csv"</span>, <span class="at">row.names =</span> <span class="cn">FALSE</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
+<p><strong>GDP Dataset Description</strong></p>
+<p>The GDP data set has been extracted from the API Ninjas “GDP” API. In this case, the data has been programatically obtained in R by making an API call for each country by its ISO3 country code. Annual Gross Domestic Product (GDP) in U.S. Dollars has been recorded in this data set.</p>
+<p>However, for this assignment, the years included have been limited to 2019 and 2020. Therefore, each country will appear twice in this data set corresponding to the two years. The data is in the form of a Tidy Data Frame, and it would later be merged with the plastic data set.</p>
+<p>Key variables include:</p>
+<ul>
+<li>country: ISO3 country code</li>
+</ul>
+<!-- -->
+<ul>
+<li><p>year: year of observation (2019 or 2020)</p></li>
+<li><p>value: GDP (nominal) in U.S. dollars</p></li>
+</ul>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="do">## Rereading in the data from the local file</span></span>
 <span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>gdp_df <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">"gdp.csv"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -433,7 +445,7 @@ Attaching package: 'jsonlite'</code></pre>
 <span id="cb28-9"><a href="#cb28-9" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb28-10"><a href="#cb28-10" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(plastics_top)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 6 × 22
+<pre><code># A tibble: 6 × 21
   country    year parent_company empty  hdpe  ldpe     o   pet    pp    ps   pvc
   &lt;chr&gt;     &lt;dbl&gt; &lt;chr&gt;          &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
 1 Burkina …  2019 Grand Total       NA    NA  2089   304  3254   113    52     6
@@ -442,10 +454,10 @@ Attaching package: 'jsonlite'</code></pre>
 4 Burkina …  2019 Babali            NA    NA     0     0   450     0     0     0
 5 Burkina …  2019 Benita Coffee     NA    NA     0     0   331     0     0     0
 6 Burkina …  2019 Kraft Foods       NA    NA     0     0   251     0     0     0
-# ℹ 11 more variables: grand_total &lt;dbl&gt;, num_events &lt;dbl&gt;, volunteers &lt;dbl&gt;,
-#   country_code &lt;chr&gt;, X &lt;int&gt;, gdp_growth &lt;dbl&gt;, gdp_nominal &lt;dbl&gt;,
-#   gdp_per_capita_nominal &lt;dbl&gt;, gdp_ppp &lt;dbl&gt;, gdp_per_capita_ppp &lt;dbl&gt;,
-#   gdp_ppp_share &lt;dbl&gt;</code></pre>
+# ℹ 10 more variables: grand_total &lt;dbl&gt;, num_events &lt;dbl&gt;, volunteers &lt;dbl&gt;,
+#   country_code &lt;chr&gt;, gdp_nominal &lt;dbl&gt;, gdp_per_capita_nominal &lt;dbl&gt;,
+#   gdp_ppp &lt;dbl&gt;, gdp_per_capita_ppp &lt;dbl&gt;, gdp_ppp_share &lt;dbl&gt;,
+#   gdp_growth &lt;dbl&gt;</code></pre>
 </div>
 </div>
 <div class="cell">
@@ -459,6 +471,53 @@ Attaching package: 'jsonlite'</code></pre>
 <span id="cb30-8"><a href="#cb30-8" aria-hidden="true" tabindex="-1"></a>            <span class="at">by =</span> <span class="fu">c</span>(<span class="st">"country_code"</span> <span class="ot">=</span> <span class="st">"Country.Code"</span>, </span>
 <span id="cb30-9"><a href="#cb30-9" aria-hidden="true" tabindex="-1"></a>                   <span class="st">"year"</span> <span class="ot">=</span> <span class="st">"Year"</span>)) <span class="sc">|&gt;</span></span>
 <span id="cb30-10"><a href="#cb30-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>Country.Name)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p><strong>Renewable Energy Dataset Description</strong></p>
+<p>The renewable energy dataset was sourced from an open-source data set provided on GitHub and is based on World Development Indicators. The data set consists of country-specific information about renewable energy consumption over time.</p>
+<p>In this case, the renewable energy data set has been filtered to include only the years 2019 and 2020 as well as only those countries that appear in the plastic data set. This filtering was done using ISO3 codes.</p>
+<p>Key variables include:</p>
+<ul>
+<li><p>Country Code : ISO3 country code</p></li>
+<li><p>Year: year of observation</p></li>
+<li><p>renewable energy consumption, measured as the percentage of total final energy consumption from renewable sources</p></li>
+</ul>
+<p>This dataset was merged with the GDP and plastics datasets to support comparative analysis across countries.</p>
+<p><strong>GDP Data Summary</strong></p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>top10_codes <span class="ot">&lt;-</span> plastics_top <span class="sc">|&gt;</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">distinct</span>(country_code) <span class="sc">|&gt;</span></span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">slice_head</span>(<span class="at">n =</span> <span class="dv">10</span>) <span class="sc">|&gt;</span></span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pull</span>(country_code)</span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a>country_plot <span class="ot">&lt;-</span> plastics_top <span class="sc">|&gt;</span></span>
+<span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(country_code <span class="sc">%in%</span> top10_codes) <span class="sc">|&gt;</span></span>
+<span id="cb31-8"><a href="#cb31-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(country, country_code) <span class="sc">|&gt;</span></span>
+<span id="cb31-9"><a href="#cb31-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(</span>
+<span id="cb31-10"><a href="#cb31-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">total_plastic =</span> <span class="fu">sum</span>(grand_total, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb31-11"><a href="#cb31-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">gdp =</span> <span class="fu">mean</span>(gdp_nominal, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb31-12"><a href="#cb31-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">.groups =</span> <span class="st">"drop"</span></span>
+<span id="cb31-13"><a href="#cb31-13" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb31-14"><a href="#cb31-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-15"><a href="#cb31-15" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(country_plot, <span class="fu">aes</span>(<span class="at">x =</span> gdp, <span class="at">y =</span> total_plastic)) <span class="sc">+</span></span>
+<span id="cb31-16"><a href="#cb31-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">size =</span> <span class="dv">3</span>) <span class="sc">+</span></span>
+<span id="cb31-17"><a href="#cb31-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">method =</span> <span class="st">"lm"</span>, <span class="at">se =</span> <span class="cn">FALSE</span>) <span class="sc">+</span></span>
+<span id="cb31-18"><a href="#cb31-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_text</span>(<span class="fu">aes</span>(<span class="at">label =</span> country_code), <span class="at">vjust =</span> <span class="sc">-</span><span class="fl">0.5</span>, <span class="at">size =</span> <span class="dv">3</span>) <span class="sc">+</span></span>
+<span id="cb31-19"><a href="#cb31-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb31-20"><a href="#cb31-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"Relationship Between GDP and Total Plastics (Top 10 Countries)"</span>,</span>
+<span id="cb31-21"><a href="#cb31-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">"GDP (billions USD)"</span>,</span>
+<span id="cb31-22"><a href="#cb31-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">y =</span> <span class="st">"Total Plastics"</span></span>
+<span id="cb31-23"><a href="#cb31-23" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb31-24"><a href="#cb31-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>`geom_smooth()` using formula = 'y ~ x'</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="Project-1-Checkpoint-3_files/figure-html/unnamed-chunk-15-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
 </div>
 </section>
 </section>

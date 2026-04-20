@@ -146,7 +146,7 @@ library(tidyverse)
 ```
 
 ```{r}
-my_key <- "eAqHuhzDSfLFeFP2pqhsbaC5iBQ6SvZ2VJeYSeNB"
+my_key <- "key"
 ## Create a function to pull the GDP of countries from the API
 get_gdp <- function(country_code, key = my_key) {
   url <- glue("https://api.api-ninjas.com/v1/gdp?country={country_code};X-Api-Key={key}")
@@ -262,7 +262,7 @@ In this case, the renewable energy data set has been filtered to include only th
 
 Key variables include:
 
--   Country.Code : ISO3 country code
+-   Country Code : ISO3 country code
 
 -   Year: year of observation
 
