@@ -1,0 +1,239 @@
+---
+title: "Project 1 Checkpoint 3"
+format: html
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+plastics <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2021/2021-01-26/plastics.csv')
+```
+
+## Data Summaries Using Existing Columns
+
+### Data Summary 1
+
+**Question**: Which parent companies contribute the most total plastic waste across all countries, and what share of the total recorded waste does each company account for?
+
+```{r}
+overall_total <- sum(plastics$grand_total, na.rm = TRUE)
+
+company_share <- function(x, overall_total) {
+  sum(x, na.rm = TRUE) / overall_total
+}
+
+company_summary <- plastics |>
+  filter(!is.na(parent_company),
+         parent_company != "Grand Total",
+         parent_company != "null",
+         parent_company != "NULL",
+         parent_company != "Unbranded") |>
+  group_by(parent_company) |>
+  summarize(
+    total_plastic_waste = sum(grand_total, na.rm = TRUE),
+    share_of_total = company_share(grand_total, overall_total),
+    .groups = "drop"
+  ) |>
+  arrange(desc(total_plastic_waste)) |>
+  slice_head(n = 10)
+
+company_summary
+```
+
+### Data Summary 2
+
+**Question**: Which countries had clean up efforts that found the largest grand total of plastics in 2019 and 2020?
+
+```{r}
+## Uses iteration and a custom function
+total_plastics <- function(input_country){
+  
+  grand_total_plastics <- plastics |>
+    filter(country == input_country) |>
+    distinct(year, grand_total) |>
+    pull(grand_total)
+  
+  sum(grand_total_plastics, na.rm = TRUE)
+}
+
+plastics |>
+  distinct(country) |>
+  filter(country != "EMPTY") |>
+  mutate(
+    plastic_total = map_int(country, total_plastics)
+    ) |>
+  slice_max(plastic_total, n = 10)
+```
+
+## Data Summaries That Modify Columns
+
+### Data Summary 3
+
+**Question**: Which countries have the highest average amount of plastic collected per cleanup event?
+
+```{r}
+plastic_per_event <- function(input_country) {
+  plastics |>
+    filter(country == input_country) |>
+    distinct(year, grand_total, num_events) |>
+    summarise(
+      total_plastic = sum(grand_total, na.rm = TRUE),
+      total_events = sum(num_events, na.rm = TRUE)
+    ) |>
+    mutate(plastic_per_event = total_plastic / total_events) |>
+    pull(plastic_per_event)
+}
+
+plastic_event_summary <- plastics |>
+  distinct(country) |>
+  mutate(plastic_per_event = map_dbl(country, plastic_per_event)) |>
+  slice_max(plastic_per_event, n = 10)
+
+plastic_event_summary
+```
+
+### Data Summary 4
+
+**Question**: Which nations had the highest average participation for cleanup events in 2019 and 2020?
+
+```{r}
+cleanup_totals <- function(input_country) {
+  plastics |>
+    filter(country == input_country) |>
+    distinct(num_events, volunteers) |>
+    mutate(total_vol = sum(volunteers, na.rm = T),
+         total_events = sum(num_events, na.rm = T)) |>
+    distinct(total_vol, total_events) |>
+    mutate(vol_per_event = total_vol / total_events) |>
+    pull(vol_per_event)
+}
+
+plastics |>
+  distinct(country) |>
+  mutate(
+    avg_participation = map_dbl(country, cleanup_totals),
+    rounded_participation = round(avg_participation)
+  ) |>
+  slice_max(avg_participation, n = 20)
+```
+
+```{r}
+## Renaming the countries with top 10 plastic totals
+plastics |>
+  distinct(country) |>
+  filter(country != "EMPTY") |>
+  mutate(
+    plastic_total = map_int(country, total_plastics)
+    ) |>
+  filter(country != "Nigeria" & plastic_total != 61123) |>
+  slice_max(plastic_total, n = 10) |> 
+  mutate(country = recode(country, 
+                          `Taiwan_ Republic of China (ROC)` = "Taiwan",
+                          NIGERIA = "Nigeria", 
+                          ECUADOR = "Ecuador",
+                          `United States of America` = "USA",
+                          `Burkina Faso` = "BFA"))
+  
+```
+
+```{r}
+library(glue)
+library(httr)
+library(tidyjson)
+library(jsonlite)
+library(readr)
+library(tidyverse)
+```
+
+```{r}
+my_key <- "eAqHuhzDSfLFeFP2pqhsbaC5iBQ6SvZ2VJeYSeNB"
+## Create a function to pull the GDP of countries from the API
+get_gdp <- function(country_code, key = my_key) {
+  url <- glue("https://api.api-ninjas.com/v1/gdp?country={country_code};X-Api-Key={key}")
+  
+  my_data <- safely(fromJSON)(url)
+  
+  if (is.null(my_data$result)) {
+    return(NA)
+  } else {
+    return(my_data$result |> filter(year %in% c(2019, 2020)))
+  }
+}
+```
+
+```{r}
+## Create a list of the top 10 countries with the highest total plastics
+library(countrycode)
+
+top_plastic_countries <- plastics |>
+  distinct(country) |>
+  filter(!country %in% c("EMPTY", "Taiwan_ Republic of China (ROC)")) |>  ## Dropping Taiwan because of its contested status in the world (some supplemental data does not include Taiwan)
+  mutate(
+    plastic_total = map_int(country, total_plastics),
+    country_code = countrycode(country, origin = "country.name", destination = "iso3c")
+  ) |>
+  filter(!is.na(country_code)) |> ## Dropping Nigeria's duplicate
+  filter(plastic_total != 61123) |> ## Added security for removing the specific duplicate
+  slice_max(plastic_total, n = 10) |>
+  pull(country_code)
+```
+
+```{r}
+#| eval: false
+Sys.sleep(20)
+## Create a list of the countries with their GDP
+gdp_list <- top_plastic_countries |>
+  map(get_gdp)
+
+## Double check for NAs
+gdp_list |>
+  is.na() |>
+  sum()
+```
+
+```{r}
+#| eval: false
+## Turn this into a tibble to join with our original data frame
+gdp_data <- gdp_list |>
+  keep(is.data.frame) |>
+  bind_rows() |>
+  rename(country_code = country)
+
+gdp_data |>
+  pull(country_code)
+
+## Saving the csv locally
+write.csv(gdp_data, "gdp.csv", row.names = FALSE)
+```
+
+```{r}
+## Rereading in the data from the local file
+gdp_df <- read.csv("gdp.csv")
+```
+
+```{r}
+#| warning: false
+plastics_top <- plastics |>
+  filter(country != "Nigeria") |>
+  filter(!country %in% c("EMPTY", "Taiwan_ Republic of China (ROC)")) |>
+  mutate(
+    country_code = countrycode(country, origin = "country.name", destination = "iso3c")
+  ) |>
+  filter(country_code %in% top_plastic_countries) |>
+  left_join(gdp_df)
+
+head(plastics_top)
+```
+
+```{r}
+renewable_data <- read.csv("renewable-energy.csv")
+## Data found from https://github.com/datasets/world-development-indicators/tree/main/indicators/eg.fec.rnew.zs
+
+plastics_top <- plastics_top |>
+  left_join(renewable_data |>
+              filter(Year %in% c(2019, 2020),
+                     Country.Code %in% plastics_top$country_code), 
+            by = c("country_code" = "Country.Code", 
+                   "year" = "Year")) |>
+  select(-Country.Name)
+```
