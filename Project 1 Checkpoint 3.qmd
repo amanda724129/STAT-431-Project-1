@@ -206,6 +206,22 @@ gdp_data |>
 write.csv(gdp_data, "gdp.csv", row.names = FALSE)
 ```
 
+**GDP Dataset Description**
+
+The GDP data set has been extracted from the API Ninjas "GDP" API. In this case, the data has been programatically obtained in R by making an API call for each country by its ISO3 country code. Annual Gross Domestic Product (GDP) in U.S. Dollars has been recorded in this data set.
+
+However, for this assignment, the years included have been limited to 2019 and 2020. Therefore, each country will appear twice in this data set corresponding to the two years. The data is in the form of a Tidy Data Frame, and it would later be merged with the plastic data set.
+
+Key variables include:
+
+-   country: ISO3 country code
+
+<!-- -->
+
+-   year: year of observation (2019 or 2020)
+
+-   value: GDP for that country and year
+
 ```{r}
 ## Rereading in the data from the local file
 gdp_df <- read.csv("gdp.csv")
@@ -236,4 +252,33 @@ plastics_top <- plastics_top |>
             by = c("country_code" = "Country.Code", 
                    "year" = "Year")) |>
   select(-Country.Name)
+```
+
+**Renewable Energy Dataset Description**
+
+The renewable energy dataset was sourced from an open-source data set provided on GitHub and is based on World Development Indicators. The data set consists of country-specific information about renewable energy consumption over time.
+
+In this case, the renewable energy data set has been filtered to include only the years 2019 and 2020 as well as only those countries that appear in the plastic data set. This filtering was done using ISO3 codes.
+
+Key variables include:
+
+-   Country.Code : ISO3 country code
+
+-   Year: year of observation
+
+-   renewable energy indicator (e.g., percentage of total energy consumption from renewable sources)
+
+This dataset was merged with the GDP and plastics datasets to support comparative analysis across countries.
+
+**GDP Data Summary**
+
+```{r}
+ggplot(plastics_top, aes(x = Value, y = grand_total)) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(
+    title = "Relationship Between GDP and Plastic Production",
+    x = "GDP",
+    y = "Total Plastics"
+  )
 ```
