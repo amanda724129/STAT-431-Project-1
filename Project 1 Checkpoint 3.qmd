@@ -1,6 +1,8 @@
 ---
 title: "Project 1 Checkpoint 3"
-format: html
+format:
+  html:
+    embed-resources: true
 editor: visual
 author: "Amanda Iang"
 ---
