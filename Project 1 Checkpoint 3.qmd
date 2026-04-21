@@ -2,6 +2,7 @@
 title: "Project 1 Checkpoint 3"
 format: html
 editor: visual
+author: "Amanda Iang"
 ---
 
 ```{r}
@@ -136,6 +137,8 @@ plastics |>
   
 ```
 
+**Project Checkpoint 3**
+
 ```{r}
 library(glue)
 library(httr)
@@ -143,10 +146,12 @@ library(tidyjson)
 library(jsonlite)
 library(readr)
 library(tidyverse)
+library(ggalluvial)
+library(ggrepel)
 ```
 
 ```{r}
-my_key <- "key"
+#| eval: false
 ## Create a function to pull the GDP of countries from the API
 get_gdp <- function(country_code, key = my_key) {
   url <- glue("https://api.api-ninjas.com/v1/gdp?country={country_code};X-Api-Key={key}")
@@ -206,26 +211,12 @@ gdp_data |>
 write.csv(gdp_data, "gdp.csv", row.names = FALSE)
 ```
 
-**GDP Dataset Description**
-
-The GDP data set has been extracted from the API Ninjas "GDP" API. In this case, the data has been programatically obtained in R by making an API call for each country by its ISO3 country code. Annual Gross Domestic Product (GDP) in U.S. Dollars has been recorded in this data set.
-
-However, for this assignment, the years included have been limited to 2019 and 2020. Therefore, each country will appear twice in this data set corresponding to the two years. The data is in the form of a Tidy Data Frame, and it would later be merged with the plastic data set.
-
-Key variables include:
-
--   country: ISO3 country code
-
-<!-- -->
-
--   year: year of observation (2019 or 2020)
-
--   value: GDP (nominal) in U.S. dollars
-
 ```{r}
 ## Rereading in the data from the local file
 gdp_df <- read.csv("gdp.csv")
 ```
+
+**Join the data sets together**
 
 ```{r}
 #| warning: false
@@ -254,6 +245,20 @@ plastics_top <- plastics_top |>
   select(-Country.Name)
 ```
 
+### New Data Descriptions
+
+**GDP Data Description**
+
+The GDP data set has been extracted from the API Ninjas “GDP” API. In this case, the data has been programatically obtained in R by making an API call for each country by its ISO3 country code. Annual Gross Domestic Product (GDP) in U.S. Dollars has been recorded in this data set.
+
+However, for this assignment, the years included have been limited to 2019 and 2020. Therefore, each country will appear twice in this data set corresponding to the two years. The data is in the form of a Tidy Data Frame, and it would later be merged with the plastic data set.
+
+Key variables include:
+
+-   country: ISO3 country code
+-   year: year of observation (2019 or 2020)
+-   value: GDP (nominal) in U.S. dollars
+
 **Renewable Energy Dataset Description**
 
 The renewable energy dataset was sourced from an open-source data set provided on GitHub and is based on World Development Indicators. The data set consists of country-specific information about renewable energy consumption over time.
@@ -270,7 +275,58 @@ Key variables include:
 
 This dataset was merged with the GDP and plastics datasets to support comparative analysis across countries.
 
-**GDP Data Summary**
+### Additional Data Summaries/Visualizations
+
+**RQ:** What is the relationship between total plastic was and percentage of renewable energy, for the top 10 countries in total plastic waste ?
+
+```{r}
+renewable_summary <- plastics_top |>
+  filter(country_code %in% top_plastic_countries) |>
+  distinct(country, 
+           country_code, 
+           year, 
+           grand_total, 
+           Value) |>
+  group_by(country, 
+           country_code) |>
+  summarize(
+    total_waste = sum(grand_total, na.rm = TRUE),
+    renewable_pct = mean(Value, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  filter(country != "Ecuador")
+
+renewable_summary
+```
+
+**New Plot:** Plastic Waste vs. Renewable Energy Percentage by Country
+
+```{r}
+
+ggplot(renewable_summary, aes(x = total_waste, y = renewable_pct)) +
+  geom_point(size = 3, color = "black") +
+  geom_text_repel(
+    aes(label = country_code),
+    size = 4,
+    box.padding = 0.5,
+    point.padding = 0.5
+  ) +
+  labs(
+    title = "Plastic Waste vs Renewable Energy by Country",
+    subtitle = "Top 10 Countries by Total Plastic Waste",
+    x = "Total Plastic Waste",
+    y = "Renewable Energy (% of total energy consumption)"
+  ) +
+  theme_classic(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold", size = 16),
+    plot.subtitle = element_text(size = 12),
+    plot.margin = margin(15, 15, 15, 15),
+    axis.title = element_text(size = 12)
+  )
+```
+
+**New Plot:** GDP vs. Total Plastic Waste by Country
 
 ```{r}
 top10_codes <- plastics_top |>
