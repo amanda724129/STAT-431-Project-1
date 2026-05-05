@@ -13,7 +13,7 @@ format:
         aria-label: Github
 embed-resources: true
 editor: visual
-theme: spacelab
+theme: spacelab 
 ---
 
 ```{r}
