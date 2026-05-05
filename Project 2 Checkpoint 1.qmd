@@ -1,0 +1,670 @@
+---
+title: "Plastic Waste Project"
+format: 
+  dashboard: 
+    logo: recycling.png
+    orientation: columns
+    nav-buttons: 
+      - icon: linkedin
+        href: https://www.linkedin.com/in/amanda-iang-082556330/
+        aria-label: LinkedIn
+      - icon: github
+        href: https://github.com/amanda724129
+        aria-label: Github
+embed-resources: true
+editor: visual
+theme: spacelab
+---
+
+```{r}
+#| output: false
+library(tidyverse)
+library(glue)
+library(httr)
+library(tidyjson)
+library(jsonlite)
+library(readr)
+library(ggalluvial)
+library(ggrepel)
+library(paletteer)
+library(countrycode)
+library(gt)
+library(broom)
+```
+
+```{r}
+#| output: false
+## Read in the plastics data
+plastics <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2021/2021-01-26/plastics.csv')
+```
+
+```{r}
+## Custom function to get the total number of plastics for each country
+total_plastics <- function(input_country){
+  
+  grand_total_plastics <- plastics |>
+    filter(country == input_country) |>
+    distinct(year, grand_total) |>
+    pull(grand_total)
+  
+  sum(grand_total_plastics, na.rm = TRUE)
+}
+
+## Custom function to get total number of plastics for each company
+company_total <- function(input_company) {
+  
+  company_grand_total <- plastics |>
+    filter(parent_company == input_company) |>
+    distinct(year, grand_total) |>
+    pull(grand_total) 
+  
+  sum(company_grand_total, na.rm = TRUE)
+  
+}
+
+## Custom function for outputting average gdp and plastic total
+gdp_plastics <- function(input_country){
+  
+  country_data <- plastics_top |>
+    filter(country == input_country) |>
+    distinct(year, grand_total, gdp_per_capita_nominal)
+  
+  tibble(
+    plastic_total = sum(country_data$grand_total, na.rm = TRUE),
+    avg_gdp_per_capita_nominal = mean(country_data$gdp_per_capita_nominal, na.rm = TRUE)
+  )
+}
+```
+
+```{r}
+#| eval: false
+get_gdp <- function(country_code, key = my_key) {
+  url <- glue("https://api.api-ninjas.com/v1/gdp?country={country_code};X-Api-Key={key}")
+  
+  my_data <- safely(fromJSON)(url)
+  
+  if (is.null(my_data$result)) {
+    return(NA)
+  } else {
+    return(my_data$result |> filter(year %in% c(2019, 2020)))
+  }
+}
+```
+
+```{r}
+## Create a list of the top 10 countries with the highest total plastics
+top_plastic_countries <- plastics |>
+  distinct(country) |>
+  filter(!country %in% c("EMPTY", "Taiwan_ Republic of China (ROC)")) |>  ## Dropping Taiwan because of its contested status in the world (some supplemental data does not include Taiwan)
+  mutate(
+    plastic_total = map_int(country, total_plastics),
+    country_code = countrycode(country, origin = "country.name", destination = "iso3c")
+  ) |>
+  filter(!is.na(country_code)) |> ## Dropping Nigeria's duplicate
+  filter(plastic_total != 61123) |> ## Added security for removing the specific duplicate
+  slice_max(plastic_total, n = 50) |>
+  pull(country_code)
+```
+
+```{r}
+#| eval: false
+Sys.sleep(20)
+## Create a list of the countries with their GDP
+gdp_list <- top_plastic_countries |>
+  map(get_gdp)
+```
+
+```{r}
+#| eval: false
+## Turn this into a tibble to join with our original data frame
+gdp_data <- gdp_list |>
+  keep(is.data.frame) |>
+  bind_rows() |>
+  rename(country_code = country)
+
+gdp_data |>
+  pull(country_code)
+
+## Saving the csv locally
+write.csv(gdp_data, "gdp.csv", row.names = FALSE)
+```
+
+```{r}
+## Rereading in the data from the local file
+gdp_df <- read.csv("gdp.csv")
+```
+
+```{r}
+#| warning: false
+plastics_top <- plastics |>
+  filter(!country %in% c("EMPTY", 
+                         "Nigeria", 
+                         "Taiwan_ Republic of China (ROC)", 
+                         "United Kingdom")) |>
+  mutate(
+    country_code = countrycode(country, origin = "country.name", destination = "iso3c")
+  ) |>
+  filter(country_code %in% top_plastic_countries) |>
+  left_join(gdp_df)
+```
+
+# Initial Data Exploration
+
+##  {.tabset}
+
+### Plastic Data
+
+This data was gathered from a publication on Github, that sourced the data from the organization, Break Free From Plastic. Break Free From Plastic is an organization that produces audits on the efforts to clean up plastic pollution within different countries throughout the world. The data set on Github contains data from the 2019 and 2020 audits.
+
+The plastic data is collected with each count of a specific type of plastic, originating from a combination of a specific country and company. This corresponds to a single observational unit in the data. Counts of these plastics are tallied up to create an aggregate of over 50 countries in the data set. The plastics specifically are classified by recycling codes.
+
+The data present here is collected through tallies of clean up efforts across these different countries, per Break Free From Plastic's website. This data was gathered to get information on the sources of plastic pollution, in order to demand a reduction in such waste across the globe, as part of Break Free From Plastic's mission.
+
+From an initial look at what cleaning has been done to the data, it is clear that from the cleaning script, the columns have been set to have values of either values of characters or doubles. This applies for both 2019 and 2020. Furthermore, for 2019, there has been an str_replace operation conducted to better set the names from the file which it was collected from. Additionally, there has been a mutate operation conducted to create new variables of pp and ps, with if else statements to handle NA values within the variable pp_2.
+
+Key information collected:
+
+-   Country of which the plastic was collected in
+
+-   Year of collection (2019 or 2020)
+
+-   Company responsible for creating the plastic waste
+
+-   Grand total of plastics from a country and company combination
+
+### GDP Data
+
+This was extracted from API Ninjas' "GDP" API endpoint. Per API Ninjas' website, the data that is provided on their website comes from various different sources, but API Ninjas does not offer much transparency in who specifically gathered the data that is available in the GDP API endpoint. For the GDP endpoint, much of the data goes back to 1980, with the most recent data going up till 2026.
+
+Data was collected with each country being treated as an observational unit. This data follows the nature of a time series, with data being collected back almost 40 to 50 years in the past for each observational unit.
+
+API Ninjas does not offer much transparency in their methods of data collection, only that they gather what is already collected from different sources and compile it together into their API endpoints. Additionally, they do not provide any information on why this data was gathered, only that they aim to provide GDP specific data for comparing one country to another.
+
+During the extraction of the data, the scope was limited to only the years of 2019 and 2020, in accordance with the years that are available from this data.
+
+Key information collected:
+
+-   ISO3 country code
+
+-   Year of observation (2019 or 2020)
+
+-   GDP value (nominal) in US dollars
+
+-   GDP growth rate as a percentage
+
+### Research Questions
+
+There were two main questions that stood out after an initial at all of these data sets.
+
+1.  What companies and countries have the highest number of total plastics thrown out over these two years? And what is the relationship between these countries and the companies responsible for this plastic waste?
+2.  Do countries with a higher GDP per capita tend to contribute more to plastic waste? Or is the majority of plastic waste concentrated in mainly developing parts of the world?
+
+# RQ 1
+
+##  {.tabset}
+
+### Table 1
+
+```{r}
+company_summary <- plastics |>
+  distinct(parent_company) |>
+  filter(!is.na(parent_company),
+         parent_company != "Grand Total",
+         parent_company != "null",
+         parent_company != "NULL",
+         parent_company != "Unbranded") |>
+  mutate(
+    total_plastic_waste = map_int(parent_company, company_total),
+    share_of_total = total_plastic_waste / sum(total_plastic_waste, na.rm = TRUE)
+  ) |>
+  slice_max(total_plastic_waste, n = 10) 
+  
+company_summary |>   
+  gt() |>
+  tab_header(
+    title = "Company Contribution to Plastic Waste"
+  ) |>
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_title()
+  ) |>
+  cols_label(
+    parent_company = "Parent Company",
+    total_plastic_waste = "Total Waste",
+    share_of_total = "Share of Total"
+  ) |>
+  fmt_percent(
+    columns = share_of_total,
+    decimals = 3
+  ) |>
+  fmt_number(columns = total_plastic_waste,
+             decimals = 0) |>
+  tab_caption("Table 1: Amount of Plastic Waste Attributed to Each Company") |>
+  tab_spanner(
+    label = "Plastic Counts",
+    columns = c(total_plastic_waste, share_of_total)
+  )
+```
+
+### Table 2
+
+```{r}
+## Uses iteration and a custom function
+plastics |>
+  distinct(country) |>
+  filter(!country %in% c("EMPTY", "Taiwan_ Republic of China (ROC)", "Nigeria")) |>
+  mutate(
+    plastic_total = map_int(country, total_plastics),
+    country = recode(country, "NIGERIA" = "Nigeria", "ECUADOR" = "Ecuador")
+    ) |>
+  slice_max(plastic_total, n = 10) |>
+  gt() |>
+  tab_header(
+    title = "Countries with the Most Plastic Waste"
+  ) |>
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_title()
+  ) |>
+  cols_label(
+    country = "Country",
+    plastic_total = "Total Waste"
+  ) |>
+  tab_caption("Table 2: Amount of Plastic Waste From Each Country") |>
+  tab_footnote(
+    footnote = "Taiwan and Republic of China were removed from data set due to the contested nature of the region. Additionally, duplicates were removed by choosing to keep the entry with higher values for plastic waste.",
+    locations = cells_column_labels(
+      columns = country
+    )
+  ) |>
+  fmt_number(columns = plastic_total,
+             decimals = 0)
+```
+
+### Sankey Diagram
+
+```{r}
+#| fig-alt: "Sankey diagram showing how plastic waste flows between countries and companies. The diagram is stratified by the type of plastic. The Philippines and Nigeria have the highest amount of waste flowing into a variety of different companies. The most common type of plastic waste is PET."
+
+## Get a list of the top 10 companies and the top 5 countries in plastic waste
+top10_companies <- unique(company_summary$parent_company)
+top5_codes <- top_plastic_countries[1:5]
+
+## Convert the data into the long format
+plastics_long <- plastics_top |>
+  filter(parent_company %in% top10_companies,
+         country_code %in% top5_codes) |>
+  select(country, year, parent_company, hdpe, ldpe, o, pet, pp, ps, pvc) |>
+  pivot_longer(
+    cols = c(hdpe, ldpe, o, pet, pp, ps, pvc),
+    names_to = "plastic_type",
+    values_to = "total_plastic"
+  ) |>
+  filter(total_plastic > 0)
+
+## Create the Sankey diagram
+plastics_long |>
+  mutate(
+    country = fct_reorder(country, 
+                          total_plastic, 
+                          sum, 
+                          .desc = TRUE),
+    parent_company = fct_reorder(parent_company, 
+                                 total_plastic, 
+                                 sum, 
+                                 .desc = TRUE),
+    parent_company = recode(parent_company,
+    "Universal Robina Corporation" = "Universal Robina",
+    "The Coca-Cola Company" = "Coca-Cola"),
+    country = recode(country,
+                     "NIGERIA" = "Nigeria")
+  ) |> 
+  ggplot(aes(axis1 = country,
+             axis2 = parent_company,
+             y = total_plastic)) +
+  scale_x_discrete(limits = c("Country", "Company"), 
+                   expand = c(.2, .05)) +
+  geom_alluvium(aes(fill = plastic_type)) +
+  geom_stratum() +
+  ggfittext::geom_fit_text(stat = "stratum", 
+                           aes(label = after_stat(stratum)),  
+                           width = 1/4, 
+                           min.size = 3) +
+  theme_bw() +
+  scale_fill_paletteer_d("ggthemes::Color_Blind") +
+  xlab("Countries vs. Companies") +
+  ylab("Total Plastic") +
+  ggtitle("Plastic Waste from Country to Company",
+          "Stratified by Plastic Type") + 
+  labs(fill = "Plastic Type")
+```
+
+### Heat Map
+
+```{r}
+#| fig-alt: "Heatmap showing where the most dense concentration of plastic waste lies between combinations of country and parent company. From the plot, the densest concentration of plastic waste lies in the company of La Doo and Nigeria. Additionally, the Coca-Cola Company has its plastic waste spread out across most of the top 5 countries in plastic waste, with the most waste being in the Philippines."
+
+heatmap_data <- plastics_top |>
+  filter(
+    !is.na(parent_company),
+    !country %in% c("EMPTY", "Taiwan_ Republic of China (ROC)", "Nigeria"),
+    parent_company != "Grand Total",
+    parent_company != "null",
+    parent_company != "NULL",
+    parent_company != "Unbranded"
+  ) |>
+  group_by(country, parent_company, country_code) |>
+  summarize(plastic_total = sum(grand_total, na.rm = TRUE), .groups = "drop")
+
+heatmap_data |>
+  filter(country_code %in% top5_codes, parent_company %in% top10_companies) |>
+  mutate(country = recode(country,
+                          "NIGERIA" = "Nigeria")) |>
+  ggplot(aes(x = country, y = parent_company, fill = plastic_total)) +
+  geom_tile() +
+  labs(title = "Country vs. Company Contribution to Plastic Waste",
+       x = "Country",
+       y = "Parent Company",
+       fill = "Total Plastic") +
+  theme_bw() +
+  scale_fill_viridis_c() 
+```
+
+##  {width="40%"}
+
+The summary tables show that the companies with the highest amount of plastic waste are the Coca Cola Company, followed by La Doo, with the rest of the top 10 highest polluting companies being relatively close to each other. Looking at the countries that have the most plastic waste, Nigeria and the Philippines stand out, with both countries being the only ones in the six figure range of plastic waste from Break Free From Plastic's audits in 2019 and 2020.
+
+The Sankey diagram shows the relationship between these countries and the companies responsible for the plastic waste. Nigeria is extremely connected with La Doo, while the Philippines is connected with the Universal Robina Corporation. It must be kept in mind that La Doo only has plastic pollution from Nigeria, so this could be a labeling error in the original data set, or a company specifically based in Nigeria. Both of these relationships show up on the heat map, where we can see both Nigeria and the Philippines contain dense amounts of plastic from these corporations.
+
+Something interesting from the heat map and the Sankey diagram is that Coca Cola, which has the highest amount of plastic waste out of all the companies, does not have plastic waste centered in one specific country, but rather its very dispersed among many countries, indicating a large global footprint in terms of plastic pollution. There is a similar trend in Colgate-Palmolive and Unilever, with those companies having a very dispersed level of plastic pollution in different countries.
+
+Overall, from the Sankey diagram and the heat map, it seems that a majority of the plastic pollution in the world is concentrated in two countries, and there are two companies heavily responsible for that pollution. But the greater trend from these diagrams is that large companies tend to have a more spread out impact on plastic pollution, rather than one centered in a specific country.
+
+# RQ 2
+
+##  {.tabset}
+
+### Table 3
+
+```{r}
+plastics_top |>
+  distinct(country) |>
+  filter(!country %in% c("EMPTY", "Taiwan_ Republic of China (ROC)", "Nigeria")) |>
+  mutate(
+    result = map(country, gdp_plastics),
+    country = recode(country, "NIGERIA" = "Nigeria", "ECUADOR" = "Ecuador")
+  ) |>
+  unnest(result) |>
+  slice_max(plastic_total, n = 10) |>
+  gt() |>
+  tab_header(
+    title = "Comparing Average GDP with Plastic Waste"
+  ) |>
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_title()
+  ) |>
+  cols_label(
+    country = "Country",
+    plastic_total = "Total Waste",
+    avg_gdp_per_capita_nominal = "GDP Per Capita (Average)"
+  ) |>
+  tab_caption("Table 3: Average GDP Compared to Plastic Waste From Each Country") |>
+  tab_spanner(
+    label = "Country Statistics",
+    columns = c(plastic_total, avg_gdp_per_capita_nominal)
+  ) |>
+  fmt_currency(columns = avg_gdp_per_capita_nominal,
+             decimals = 2) |>
+  tab_footnote(
+    footnote = "Expressed in billions of USD",
+    locations = cells_column_labels(
+      columns = avg_gdp_per_capita_nominal
+    ))
+```
+
+### Table 4
+
+```{r}
+## Modify the plastics data to get 3 quantiles and classifications
+quantile_data <- plastics_top |>
+  distinct(country, year, grand_total, gdp_per_capita_nominal) |>
+  mutate(
+    gdp_quantile = case_when(
+      gdp_per_capita_nominal <= quantile(gdp_per_capita_nominal, 
+                                         0.33, 
+                                         na.rm = TRUE) ~ "Low GDP",
+      gdp_per_capita_nominal <= quantile(gdp_per_capita_nominal, 
+                                         0.66, 
+                                         na.rm = TRUE) ~ "Mid GDP",
+      TRUE ~ "High GDP"
+    ),
+    gdp_quantile = factor(gdp_quantile,
+                          levels = c("Low GDP", "Mid GDP", "High GDP"))
+  )
+
+## Create functions to get the total plastic waste and the average gdp per capita
+quantile_plastic <- function(input_quantile) {
+  
+  total <- quantile_data |>
+    filter(gdp_quantile == input_quantile) |>
+    pull(grand_total)
+  
+  sum(total, na.rm = TRUE)
+}
+ 
+quantile_gdp <- function(input_quantile) {
+  
+  avg_gdp_by_country <- quantile_data |>
+    filter(gdp_quantile == input_quantile) |>
+    group_by(country) |>
+    summarise(avg_gdp = mean(gdp_per_capita_nominal, na.rm = TRUE), .groups = "drop") |>
+    pull(avg_gdp)
+  
+  mean(avg_gdp_by_country, na.rm = TRUE)
+}
+
+## Iterate and modify the table
+tibble(gdp_quantile = c("Low GDP", "Mid GDP", "High GDP")) |>
+  mutate(
+    total_plastic = map_int(gdp_quantile, quantile_plastic),
+    avg_gdp_per_capita_nominal = map_dbl(gdp_quantile, quantile_gdp),
+    share_of_total  = total_plastic / sum(total_plastic, na.rm = TRUE)
+  ) |>
+  gt() |>
+  tab_header(
+    title = "Plastic Waste by GDP Categories"
+  ) |>
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_title()
+  ) |>
+  cols_label(
+    gdp_quantile = "GDP Category",
+    total_plastic = "Total Plastic",
+    avg_gdp_per_capita_nominal = "GDP Per Capita (Average)",
+    share_of_total = "Share of Total"
+  ) |>
+  tab_caption("Table 4: Plastic Waste Attributed to Different GDP Levels") |>
+  tab_spanner(
+    label = "GDP Statistics",
+    columns = c(avg_gdp_per_capita_nominal, share_of_total)) |>
+  tab_footnote(
+    footnote = "Expressed in billions of USD",
+    locations = cells_column_labels(
+      columns = avg_gdp_per_capita_nominal
+    )) |>
+  fmt_currency(columns = avg_gdp_per_capita_nominal,
+             decimals = 2) |>
+  fmt_number(columns = total_plastic,
+             decimals = 0) |>
+  fmt_percent(columns = share_of_total,
+              decimals = 3)
+
+```
+
+### Dumbbell Plot
+
+```{r}
+#| fig-alt: "Dumbbell plot comparing GDP per capita rank and plastic waste rank across countries. Blue points represent GDP per capita rank, orange points represent plastic waste rank, and gray lines show the gap between them."
+
+rq2_dumbbell <- plastics_top %>%
+  filter(!is.na(gdp_per_capita_nominal), !is.na(grand_total)) %>%
+  group_by(country) %>%
+  summarize(
+    total_plastic = sum(grand_total, na.rm = TRUE),
+    avg_gdp_per_capita = mean(gdp_per_capita_nominal, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    gdp_rank = min_rank(desc(avg_gdp_per_capita)),
+    plastic_rank = min_rank(desc(total_plastic)),
+    rank_gap = abs(gdp_rank - plastic_rank)
+  ) %>%
+  slice_max(total_plastic, n = 10) %>%
+  mutate(country = fct_reorder(country, rank_gap))
+
+ggplot(rq2_dumbbell) +
+  geom_segment(
+    aes(
+      y = country, yend = country,
+      x = gdp_rank, xend = plastic_rank
+    ),
+    color = "gray60",
+    linewidth = 1.3
+  ) +
+  geom_point(
+    aes(x = gdp_rank, y = country, color = "GDP per Capita Rank"),
+    size = 3
+  ) +
+  geom_point(
+    aes(x = plastic_rank, y = country, color = "Plastic Waste Rank"),
+    size = 3
+  ) +
+  scale_color_manual(
+    name = "Legend",
+    values = c(
+      "GDP per Capita Rank" = "steelblue",
+      "Plastic Waste Rank" = "darkorange"
+    )
+  ) +
+  labs(
+    title = "GDP per Capita Rank vs Plastic Waste Rank by Country",
+    subtitle = "Gray lines show the gap between GDP per capita rank (blue) and plastic waste rank (orange)",
+    x = "Rank (1 = highest)",
+    y = "Country"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+### Scatter Plot
+
+```{r}
+#| fig-alt: "A scatterplot of total plastic waste vs nominal GDP colored by income group. Lower middle income countries like Nigeria and the Philippines produce the most plastic waste despite low GDPs, while high income countries show moderate waste levels despite higher GDPs, suggesting no clear positive relationship between GDP and plastic waste."
+#| warning: false
+
+full_summary <- plastics_top |>
+  distinct(country) |>
+  filter(!country %in% c("EMPTY", "Taiwan_ Republic of China (ROC)", "Nigeria")) |>
+  mutate(
+    result = map(country, gdp_plastics),
+    country = recode(country, "NIGERIA" = "Nigeria", "ECUADOR" = "Ecuador")
+  ) |>
+  unnest(result) |>
+  mutate(gdp_category = case_when(
+    is.na(avg_gdp_per_capita_nominal) ~ "Unknown",
+    avg_gdp_per_capita_nominal < 5000  ~ "Low GDP",
+    avg_gdp_per_capita_nominal < 20000 ~ "Middle GDP",
+    avg_gdp_per_capita_nominal >= 20000 ~ "High GDP"
+  )) 
+
+full_summary |>
+  filter(country != "China") |>
+  ggplot(aes(x = avg_gdp_per_capita_nominal, y = plastic_total, color = gdp_category)) +
+    geom_point(size = 1.5) +
+    geom_text_repel(
+      aes(label = country),
+      size = 2
+  ) +
+  labs(
+    title    = "Total Plastic Waste vs GDP by Country",
+    subtitle = "Colored by GDP Category",
+    x        = "Avg GDP Per Capita(Nominal, USD)",
+    y        = "Total Plastic Waste",
+    color    = "GDP Category"
+  ) +
+  scale_color_manual(values = c(
+    "Low GDP"          = "#e41a1c",
+    "Middle GDP" = "#BF00FF",
+    "High GDP"         = "#1f77b4"
+  )) +
+  theme_classic() +
+  theme(
+    plot.title    = element_text(face = "bold", size = 16),
+    plot.subtitle = element_text(size = 12),
+    plot.margin   = margin(15, 15, 15, 15)
+  )
+```
+
+### Regression Model
+
+A simple linear regression model was used:
+
+$Y_i$ = $\beta_0$ + $\beta_1 X_i$ + $\varepsilon_i$
+
+$Y_i$ = total plastic waste for country $i$
+
+$X_i$ = GDP per capita (nominal) for country $i$
+
+$\beta_0$ = intercept
+
+$\beta_1$ = slope parameter
+
+$\varepsilon_i\sim \text{iid } N(0, \sigma^2)$
+
+```{r}
+model_gdp <- lm(plastic_total ~ avg_gdp_per_capita_nominal, data = full_summary)
+
+tidy(model_gdp) |>
+  gt() |>
+  tab_header(
+    title    = "Linear Regression Results",
+    subtitle = "Response: Total Plastic Waste | Predictor: GDP Per Capita (Nominal)"
+  ) |>
+  tab_style(
+    style     = cell_text(weight = "bold"),
+    locations = list(cells_column_labels(),
+                     cells_title())
+  ) |>
+  cols_label(
+    term      = "Term",
+    estimate  = "Estimate",
+    std.error = "Std. Error",
+    statistic = "t-stat",
+    p.value   = "p-value"
+  ) |>
+  fmt_number(
+    columns  = c(estimate, std.error, statistic),
+    decimals = 4
+  ) |>
+  fmt_number(
+    columns  = p.value,
+    decimals = 4
+  )
+```
+
+##  {width="40%"}
+
+From the summary tables that were constructed, it would appear that countries with higher levels of plastic pollution tend to be of a lower income level in terms of GDP per capita. The total plastic waste for countries with low GDP's per capita are much higher than that of countries with middle and high GDP's per capita.
+
+The dumbbell plot seems to support this assumption, as it compares each country’s rank in GDP per capita (blue) with its rank in total plastic waste (orange), with gray lines showing the gap between the two. If higher GDP per capita led to more plastic waste, the points would be close together, but many countries show large differences. For example, Nigeria has a much higher plastic waste rank than its GDP per capita rank, while the United States and shows the opposite pattern, with a higher GDP per capita ranking but a lower plastic waste ranking. Many of the countries in the top 10 in plastic waste seem to be on the lower end of the rankings when it comes to GDP per capita, which would suggest that there could be a negative relationship present here.
+
+However, the scatter plot challenges this assumption of a negative relationship. From the plot, Nigeria and the Philippines are responsible for the highest total plastic waste despite having GDP's per capita near zero, but they are the only points in that area, suggesting them to be potential outliers. There does not seem to be a relationship present for wealthier countries either, as countries like the United States and Germany which have significantly higher GDP's per capita, produce relatively moderate amounts of plastic waste. Many of the countries seem to have comparable levels of plastic waste at differing levels of GDP per capita.
+
+Finally, from the simple regression linear model, which examines the relationship between GDP per capita and total plastic waste across countries, it is apparent that there is no correlation present between these two variables. The estimated slope was -0.0747, barely indicating a very slight negative relationship and the p-value of 0.7095 is extremely high, which indicates that there is no significant evidence for an association between GDP per capita and total plastic waste.
+
+# Final Conclusions
+
+**RQ #1:** From the visualizations of the Sankey diagram and the heat map, it would appear that two countries, Nigeria and the Philippines, are outliers in the distribution of plastic waste across the globe, as the top companies responsible for plastic waste around the world seem to "spread the wealth" in terms of pollution among different countries.
+
+**RQ #2:** Initially, the summary tables and the dumbbell plot would suggest that countries with a lower GDP per capita tend to have more plastic waste, but a closer inspection of the scatter plot and the linear regression model conclude that there is no observable relationship between the GDP per capita of a country and its plastic waste.
